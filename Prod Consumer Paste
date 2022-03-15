@@ -1,0 +1,293 @@
+#include <linux/init.h>           
+#include <linux/kernel.h>    
+#include <linux/sched/signal.h>
+#include <linux/semaphore.h>
+#include <linux/kthread.h>
+#include <linux/init.h>
+#include <linux/timekeeping.h>
+#include <linux/module.h>       
+  
+MODULE_LICENSE("GPL");              
+MODULE_AUTHOR("Takeshita Ellershaw Payne");      
+MODULE_DESCRIPTION("CSE330 Project 2");  
+MODULE_VERSION("0.1");              ///< The version of the module
+    
+// Initialize params to make it compile    
+static int UID = 0;
+static int buff_size = 0;
+static int num_producers = 0;
+static int num_consumers = 0;
+
+// TODO: Check param validity
+module_param(UID, int, 0);  // Parameter which stores the the user ID of a given user
+module_param(buff_size, int, 0); // Parameter which stores the size of the buffer, must be a positive int
+module_param(num_producers, int, 0); // Parameter which stores the number of producer threads, must be 1 or 0
+module_param(num_consumers, int, 0); // Parameter which stores the number of consumer threads, a non-negative int)
+
+// Declare producer and consumer functions
+static int consumer_func(void *arg);
+static int producer_func(void *arg);
+
+// Declare global pointer of consumer functions so all consumer threads can be stopped
+struct task_struct *consumer_ptr;
+
+// Semaphore declaration
+struct semaphore empty;
+struct semaphore full;
+struct semaphore mutex;
+
+// Linked List declaration 
+typedef struct task_node{
+struct task_struct *task;
+struct task_node *next;
+
+} task_list;
+
+// Buffer struct declaration
+typedef struct buff_data{
+int capacity;
+struct task_node *head;
+
+} buff_data;
+
+// Declare the new global buffer
+struct buff_data buffer;
+
+// Define a global int to track total task time
+int total_task_time;
+
+ /** @brief The LKM initialization function
+ *  The static keyword restricts the visibility of the function to within this C file. The __init
+ *  macro means that for a built-in driver (not a LKM) the function is only used at initialization
+ *  time and that it can be discarded and its memory freed up after that point.
+ *  @return returns 0 if successful
+ */
+
+static int __init helloBBB_init(void){
+
+printk(KERN_INFO "Opening thread\n");
+
+// Initialize semaphores
+// If Semaphore > 0: Runs
+// If Semaphore = 0: Does not run
+sema_init(&empty, buff_size);
+sema_init(&full, 0); 
+sema_init(&mutex, 1);
+
+printk(KERN_INFO "Buffsize: %d\n", buff_size);
+
+
+// Set initial values for global buffer
+buffer.capacity = buff_size;
+buffer.head = NULL;
+
+// Make producer and consumer threads 
+struct task_struct *producer;
+struct task_struct *consumer;
+int err;
+
+
+
+// Start consumer threads
+printk(KERN_INFO "Starting consumers\n");
+consumer = kthread_run(consumer_func, NULL, "consumer");
+if (IS_ERR(consumer)){
+printk(KERN_INFO "ERROR: Cannot create thread consumer\n");
+err = PTR_ERR(consumer);
+consumer = NULL;
+return err;
+}
+
+
+
+
+// Have the get the value of the consumer threads so the producer can stop them later
+consumer_ptr = consumer;
+printk(KERN_INFO "Consumer pointer set to %p\n", consumer_ptr);
+
+
+// Start the producer thread
+printk(KERN_INFO "Starting producer. \n");
+producer = kthread_run(producer_func, NULL, "producer");
+if (IS_ERR(producer)){
+printk(KERN_INFO "ERROR: Cannot create thread producer\n");
+err = PTR_ERR(producer);
+producer = NULL;
+return err;
+}
+
+
+
+ 
+   return 0;
+}
+ 
+static int producer_func(void *arg){
+
+// Show the producer thread is up and running 
+//printk(KERN_INFO "I am thread: %s[PID = %d]\n", current->comm, current->pid);
+printk(KERN_INFO "Producer Running...\n");
+
+struct task_struct* p;
+size_t process_counter=0;
+for_each_process(p){
+if(/*p->cred->uid.val == UID &&*/ process_counter < 10){
+
+// Loop until empty nodes exist in the buffer
+do{
+if(down_interruptible(&empty)){
+printk(KERN_INFO "Prod enter Buffer\n");
+break;
+}else{
+printk(KERN_INFO "No space in buff for producer \n");
+
+}
+} while(1);
+
+// Loop until mutex is available
+printk(KERN_INFO "Prod enter\n");
+down_interruptible(&mutex);
+
+// Add new process to the tail of the linked list
+
+/*
+struct task_node *newNode;
+newNode->task = p;
+newNode->next = NULL;
+
+if(buffer.head == NULL){
+buffer.head = newNode;
+} else{
+struct task_node *temp = buffer.head;
+while(temp->next != NULL){
+temp = temp->next;
+}
+temp->next = newNode;
+
+}
+*/
+
+
+++process_counter;
+
+printk(KERN_INFO "Added task %d w/ user %d\n to buffer", p->pid, p->cred->uid.val);
+}
+
+//printk(KERN_INFO "Prod skip\n");
+
+// Increment the mutex
+up(&mutex);
+
+// Increment the full semaphore
+up(&full); 
+
+// Exit the consumer pointer
+/*
+if(consumer_ptr == NULL){
+printk(KERN_INFO "Error: Consumer pointer is null.");
+}else{
+kthread_stop(consumer_ptr);
+}
+*/
+
+//printk("Producer Finished\n");
+
+
+
+
+}
+
+printk(KERN_INFO "%d processes are in the queue for the given user.\n", process_counter);
+
+return 0;
+
+}
+
+static int consumer_func(void *arg){
+
+//printk(KERN_INFO "I am thread: %s[PID = %d]\n", current->comm, current->pid);
+printk(KERN_INFO "Cons running... \n");
+int counter = 0;
+
+while(counter < 100){
+
+
+
+// Loop until full nodes exist in the buffer
+do{
+if(down_interruptible(&full)){
+printk(KERN_INFO "Cons removed from buffer.\n");
+break;
+}else{
+printk(KERN_INFO "No items in buffer for consumer \n");
+}
+} while(1);
+
+// Loop until mutex is available
+down_interruptible(&mutex);
+printk(KERN_INFO "Cons Critical Section... \n");
+
+
+
+// Remove the head of the linked list
+if(buffer.head == NULL){
+// This only happens if the semaphores aren't working right
+printk(KERN_INFO "Consumer error: attempting to consume from empty buffer");
+}else{
+
+/*
+// Remove task node from the buffer 
+// TODO: Fix sloppy memory management 
+struct task_node *temp;
+temp = buffer.head;
+buffer.head = buffer.head->next;
+
+*/
+}
+
+// Increment the mutex
+counter++;
+up(&mutex);
+printk("Consumer Removed the task\n");
+up(&empty);
+
+
+// Increment the empty semaphore
+
+// Find the task time of the process and increment total task time 
+// QUESTION: DOES THE PROCESS BEGIN ONCE I RETREIVE THE START TIME?
+// TODO: Find right data format for timekeeping
+
+/*int start_time = temp->task->start_time;
+int current_time = ktime_get_ns();
+int task_time = current_time-start_time;
+total_task_time += task_time;
+
+printk("%s consumed Item#-%d on buffer index: %d PID:%d Elapsed Time- %d", current->comm, 0, temp->task->pid, task_time);*/
+
+
+
+
+}
+
+
+return 0;
+
+}
+ 
+
+/** @brief The LKM cleanup function
+ *  Similar to the initialization function, it is static. The __exit macro notifies that if this
+ *  code is used for a built-in driver (not a LKM) that this function is not required.
+ */
+static void __exit helloBBB_exit(void){
+printk(KERN_INFO "The total elapsed time of all processes for UID %d is %d", UID, total_task_time);
+printk(KERN_INFO "Closing thread\n");
+}
+
+/** @brief A module must use the module_init() module_exit() macros from linux/init.h, which
+ *  identify the initialization function at insertion time and the cleanup function (as
+ *  listed above)
+ */
+module_init(helloBBB_init);
+module_exit(helloBBB_exit);
