@@ -128,25 +128,23 @@ static int producer_func(void *arg){
 //printk(KERN_INFO "I am thread: %s[PID = %d]\n", current->comm, current->pid);
 printk(KERN_INFO "Producer Running...\n");
 
+printk(KERN_INFO "Empty: %d\n", empty.count);
+
 struct task_struct* p;
 size_t process_counter=0;
 for_each_process(p){
-if(/*p->cred->uid.val == UID &&*/ process_counter < 10){
+if(p->cred->uid.val == UID && process_counter < 3){
 
 // Loop until empty nodes exist in the buffer
-do{
-if(down_interruptible(&empty)){
-printk(KERN_INFO "Prod enter Buffer\n");
+if(down_interruptible(&empty)) {
 break;
-}else{
-printk(KERN_INFO "No space in buff for producer \n");
-
 }
-} while(1);
 
-// Loop until mutex is available
-printk(KERN_INFO "Prod enter\n");
+if(down_interruptible(&mutex)) {
 down_interruptible(&mutex);
+break;
+}
+
 
 // Add new process to the tail of the linked list
 
@@ -209,46 +207,49 @@ static int consumer_func(void *arg){
 printk(KERN_INFO "Cons running... \n");
 int counter = 0;
 
-while(counter < 100){
+while(counter < 10){
 
 
 
 // Loop until full nodes exist in the buffer
-do{
-if(down_interruptible(&full)){
-printk(KERN_INFO "Cons removed from buffer.\n");
+if(down_interruptible(&full)) {
 break;
-}else{
-printk(KERN_INFO "No items in buffer for consumer \n");
 }
-} while(1);
 
 // Loop until mutex is available
-down_interruptible(&mutex);
-printk(KERN_INFO "Cons Critical Section... \n");
+if(down_interruptible(&mutex)) {
+break;
+}
 
 
+/*
 
 // Remove the head of the linked list
 if(buffer.head == NULL){
 // This only happens if the semaphores aren't working right
 printk(KERN_INFO "Consumer error: attempting to consume from empty buffer");
+printk(KERN_INFO "Full: %d", full.count);
 }else{
 
-/*
+
 // Remove task node from the buffer 
 // TODO: Fix sloppy memory management 
 struct task_node *temp;
 temp = buffer.head;
 buffer.head = buffer.head->next;
 
-*/
+printk("Consumer Removed the task from the buffer\n");
 }
 
-// Increment the mutex
+*/
+
+printk("Consumer Removed the task from the buffer\n");
 counter++;
+
+
+// Increment the mutex
 up(&mutex);
-printk("Consumer Removed the task\n");
+
 up(&empty);
 
 
