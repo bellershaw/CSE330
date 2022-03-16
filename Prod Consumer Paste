@@ -37,21 +37,20 @@ struct semaphore full;
 struct semaphore mutex;
 
 // Linked List declaration 
-typedef struct task_node{
-struct task_struct *task;
-struct task_node *next;
+struct task_node{
+struct task_struct *task ;
+struct task_node *next ;
 
-} task_list;
+} empty_task_list;
 
 // Buffer struct declaration
-typedef struct buff_data{
+struct buff_data{
 int capacity;
-struct task_node *head;
+struct task_node *head ;
 
 } buff_data;
 
-// Declare the new global buffer
-struct buff_data buffer;
+
 
 // Define a global int to track total task time
 int total_task_time;
@@ -78,8 +77,13 @@ printk(KERN_INFO "Buffsize: %d\n", buff_size);
 
 
 // Set initial values for global buffer
-buffer.capacity = buff_size;
-buffer.head = NULL;
+
+
+empty_task_list.task = NULL;
+empty_task_list.next = NULL;
+
+buff_data.capacity = buff_size;
+buff_data.head = &empty_task_list;
 
 // Make producer and consumer threads 
 struct task_struct *producer;
@@ -102,8 +106,8 @@ return err;
 
 
 // Have the get the value of the consumer threads so the producer can stop them later
-consumer_ptr = consumer;
-printk(KERN_INFO "Consumer pointer set to %p\n", consumer_ptr);
+//consumer_ptr = consumer;
+//printk(KERN_INFO "Consumer pointer set to %p\n", consumer_ptr);
 
 
 // Start the producer thread
@@ -126,14 +130,15 @@ static int producer_func(void *arg){
 
 // Show the producer thread is up and running 
 //printk(KERN_INFO "I am thread: %s[PID = %d]\n", current->comm, current->pid);
-printk(KERN_INFO "Producer Running...\n");
 
-printk(KERN_INFO "Empty: %d\n", empty.count);
+//printk("1\n");
 
 struct task_struct* p;
 size_t process_counter=0;
 for_each_process(p){
 if(p->cred->uid.val == UID && process_counter < 3){
+
+//printk("2\n");
 
 // Loop until empty nodes exist in the buffer
 if(down_interruptible(&empty)) {
@@ -141,35 +146,43 @@ break;
 }
 
 if(down_interruptible(&mutex)) {
-down_interruptible(&mutex);
 break;
 }
 
 
 // Add new process to the tail of the linked list
 
-/*
-struct task_node *newNode;
-newNode->task = p;
-newNode->next = NULL;
+//printk("3\n");
 
-if(buffer.head == NULL){
-buffer.head = newNode;
+struct task_node newNode;
+newNode.task = p;
+newNode.next = NULL;
+
+//printk("4\n");
+
+if(buff_data.head == &empty_task_list){
+//printk("5\n");
+buff_data.head = &newNode;
+printk("Added New Task node to head\n");
 } else{
-struct task_node *temp = buffer.head;
+//printk("6\n");
+struct task_node *temp = buff_data.head;
+//printk("7\n");
 while(temp->next != NULL){
+//printk("8\n");
 temp = temp->next;
 }
-temp->next = newNode;
+//printk("9\n");
+temp->next = &newNode;
 
 }
-*/
+
 
 
 ++process_counter;
 
 printk(KERN_INFO "Added task %d w/ user %d\n to buffer", p->pid, p->cred->uid.val);
-}
+printk("Empty: %d\n", empty.count);
 
 //printk(KERN_INFO "Prod skip\n");
 
@@ -178,6 +191,9 @@ up(&mutex);
 
 // Increment the full semaphore
 up(&full); 
+}
+
+
 
 // Exit the consumer pointer
 /*
@@ -204,7 +220,7 @@ return 0;
 static int consumer_func(void *arg){
 
 //printk(KERN_INFO "I am thread: %s[PID = %d]\n", current->comm, current->pid);
-printk(KERN_INFO "Cons running... \n");
+
 int counter = 0;
 
 while(counter < 10){
@@ -221,11 +237,11 @@ if(down_interruptible(&mutex)) {
 break;
 }
 
-
-/*
+printk(KERN_INFO "In consumer: %d", full.count);
+printk(KERN_INFO "Full: %d", full.count);
 
 // Remove the head of the linked list
-if(buffer.head == NULL){
+if(buff_data.head == NULL){
 // This only happens if the semaphores aren't working right
 printk(KERN_INFO "Consumer error: attempting to consume from empty buffer");
 printk(KERN_INFO "Full: %d", full.count);
@@ -235,16 +251,24 @@ printk(KERN_INFO "Full: %d", full.count);
 // Remove task node from the buffer 
 // TODO: Fix sloppy memory management 
 struct task_node *temp;
-temp = buffer.head;
-buffer.head = buffer.head->next;
+temp = buff_data.head;
+buff_data.head = buff_data.head->next;
 
-printk("Consumer Removed the task from the buffer\n");
+int start_time = temp->task->start_time;
+printk("Start Time: %d\n", start_time);
+int current_time = ktime_get_ns();
+printk("Current Time: %d\n", current_time);
+int task_time = current_time-start_time;
+printk("Task Time: %d\n", task_time);
+total_task_time += task_time;
+
+printk("%s consumed Item#-%d on buffer index: %d PID:%d Elapsed Time- %d", current->comm, 0, temp->task->pid, task_time);
+printk("Full: %d\n", full.count);
 }
 
-*/
-
-printk("Consumer Removed the task from the buffer\n");
 counter++;
+
+
 
 
 // Increment the mutex
