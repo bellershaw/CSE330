@@ -163,7 +163,7 @@ newNode.next = NULL;
 if(buff_data.head == &empty_task_list){
 //printk("5\n");
 buff_data.head = &newNode;
-printk("Added New Task node to head\n");
+printk(KERN_INFO "Added New Task node to head\n");
 } else{
 //printk("6\n");
 struct task_node *temp = buff_data.head;
@@ -182,7 +182,7 @@ temp->next = &newNode;
 ++process_counter;
 
 printk(KERN_INFO "Added task %d w/ user %d\n to buffer", p->pid, p->cred->uid.val);
-printk("Empty: %d\n", empty.count);
+printk(KERN_INFO "Empty: %d\n", empty.count);
 
 //printk(KERN_INFO "Prod skip\n");
 
@@ -253,17 +253,34 @@ printk(KERN_INFO "Full: %d", full.count);
 struct task_node *temp;
 temp = buff_data.head;
 buff_data.head = buff_data.head->next;
+printk(KERN_INFO "0\n");
 
-int start_time = temp->task->start_time;
+if(temp != NULL){
+
+printk(KERN_INFO "1\n");
+long start_time = temp->task->start_time;
+printk(KERN_INFO "2\n");
 printk("Start Time: %d\n", start_time);
+printk(KERN_INFO "3\n");
 int current_time = ktime_get_ns();
-printk("Current Time: %d\n", current_time);
-int task_time = current_time-start_time;
-printk("Task Time: %d\n", task_time);
+printk(KERN_INFO "4\n");
+printk(KERN_INFO "Current Time: %d\n", current_time);
+printk(KERN_INFO "5\n");
+int task_time = current_time/*-start_time*/;
+printk(KERN_INFO "6\n");
+printk(KERN_INFO "Task Time: %d\n", task_time);
+printk(KERN_INFO "7\n");
 total_task_time += task_time;
+printk(KERN_INFO "8\n");
 
-printk("%s consumed Item#-%d on buffer index: %d PID:%d Elapsed Time- %d", current->comm, 0, temp->task->pid, task_time);
-printk("Full: %d\n", full.count);
+printk(KERN_INFO "%s consumed Item#-%d on buffer index: %d PID:%d Elapsed Time- %d", current->comm, 0, temp->task->pid, task_time);
+
+printk(KERN_INFO "9\n");
+printk(KERN_INFO "Full: %d", full.count);
+printk(KERN_INFO "10\n");
+}
+
+
 }
 
 counter++;
