@@ -312,7 +312,7 @@ static int consumer_func(void *arg)
             //printk(KERN_INFO "Current Time: %ld\n", current_time);
             //printk(KERN_INFO "5\n");
             long task_time = current_time - start_time;
-	    int base = task_time/1000000000; //base time in seconds
+	    u64 base = task_time/1000000000; //base time in seconds
 	    //printk(KERN_INFO "sec: %d\n",seconds);
 	    int hours = base/3600;
 	    //printk(KERN_INFO "min: %d\n",minutes);
@@ -375,7 +375,7 @@ static int consumer_func(void *arg)
 static void __exit helloBBB_exit(void)
 {
 	//kthread_stop(consumer);
-	int base = total_task_time/1000000000;//base total time in secs
+	u64 base = total_task_time/1000000000;//base total time in secs
 	int hours = base/3600;
 	int minutes = (base - (hours*3600))/60;
 	int seconds = base - (hours*3600) - (minutes*60);
