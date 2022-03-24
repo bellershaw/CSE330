@@ -98,13 +98,21 @@ static int __init helloBBB_init(void)
 
     // Start consumer threads
     //printk(KERN_INFO "Starting consumers\n");
-    consumer = kthread_run(consumer_func, NULL, "consumer");
-    if (IS_ERR(consumer))
+    if(num_consumers == 0 && num_producers == 0)
     {
-        printk(KERN_INFO "ERROR: Cannot create thread consumer\n");
-        err = PTR_ERR(consumer);
-        consumer = NULL;
-        return err;
+	    printk(KERN_INFO "No producers or consumers\n");
+	    return 0;
+    }
+    if(num_consumers != 0)
+    {
+    	consumer = kthread_run(consumer_func, NULL, "consumer");
+    	if (IS_ERR(consumer))
+    	{
+    	    printk(KERN_INFO "ERROR: Cannot create thread consumer\n");
+    	    err = PTR_ERR(consumer);
+    	    consumer = NULL;
+    	    return err;
+	}
     }
 
 
@@ -118,13 +126,16 @@ static int __init helloBBB_init(void)
 
     // Start the producer thread
     //printk(KERN_INFO "Starting producer. \n");
-    producer = kthread_run(producer_func, NULL, "producer");
-    if (IS_ERR(producer))
+    if(num_producers != 0)
     {
-        printk(KERN_INFO "ERROR: Cannot create thread producer\n");
-        err = PTR_ERR(producer);
-        producer = NULL;
-        return err;
+    	producer = kthread_run(producer_func, NULL, "producer");
+    	if (IS_ERR(producer))
+    	{
+    	    printk(KERN_INFO "ERROR: Cannot create thread producer\n");
+    	    err = PTR_ERR(producer);
+    	    producer = NULL;
+    	    return err;
+	}
     }
 
 
@@ -263,7 +274,8 @@ static int consumer_func(void *arg)
             // This only happens if the semaphores aren't working right
             printk(KERN_INFO "Consumer error: attempting to consume from empty buffer");
             //printk(KERN_INFO "Full: %d", full.count);
-           // kthread_stop(consumer);
+            //kthread_stop(consumer);
+	    //break;
         }
         else
         {
@@ -284,6 +296,7 @@ static int consumer_func(void *arg)
             else
             {
                 printk(KERN_INFO "Debug2 : Next is Null\n");
+		//break;
                 //kthread_stop(consumer);
             }
 
@@ -299,11 +312,12 @@ static int consumer_func(void *arg)
             //printk(KERN_INFO "Current Time: %ld\n", current_time);
             //printk(KERN_INFO "5\n");
             long task_time = current_time - start_time;
-	    int seconds = task_time/1000000000;
+	    int base = task_time/1000000000; //base time in seconds
 	    //printk(KERN_INFO "sec: %d\n",seconds);
-	    int minutes = seconds/60;
+	    int hours = base/3600;
 	    //printk(KERN_INFO "min: %d\n",minutes);
-	    int hours = minutes/60;
+	    int minutes = (base - (hours*3600))/60;
+	    int seconds = base - (hours*3600) - (minutes*60);
 	    //printk(KERN_INFO "hours: %d\n",hours);
             //printk(KERN_INFO "6\n");
             //printk(KERN_INFO "Task Time: %ld\n", task_time);
@@ -311,7 +325,8 @@ static int consumer_func(void *arg)
             total_task_time += task_time;
             //printk(KERN_INFO "8\n");
 
-            printk(KERN_INFO "[%s] consumed Item#-%d on buffer index: %d PID:%d Elapsed Time- %d:%d:%d\n", current->comm, temp->task->cred->uid.val, 0, temp->task->pid, hours, minutes, seconds);
+            printk(KERN_INFO "[%s] consumed Item#-%d on buffer index: %d PID:%d Elapsed Time- %02d:%02d:%02d\n", current->comm, temp->task->cred->uid.val, index, temp->task->pid, hours, minutes, seconds);
+	    index++;
 
 
         
@@ -359,11 +374,12 @@ static int consumer_func(void *arg)
  */
 static void __exit helloBBB_exit(void)
 {
-	//kthread_stop(consumer_ptr);
-	int seconds = total_task_time/1000000000;
-	int minutes = seconds/60;
-	int hours = minutes/60;
-    printk(KERN_INFO "The total elapsed time of all processes for UID %d is %d:%d:%d\n", UID, hours, seconds, minutes);
+	//kthread_stop(consumer);
+	int base = total_task_time/1000000000;//base total time in secs
+	int hours = base/3600;
+	int minutes = (base - (hours*3600))/60;
+	int seconds = base - (hours*3600) - (minutes*60);
+    printk(KERN_INFO "The total elapsed time of all processes for UID %d is %02d:%02d:%02d\n", UID, hours, minutes, seconds);
     //printk(KERN_INFO "Closing thread\n");
 }
 
