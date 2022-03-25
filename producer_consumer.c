@@ -46,6 +46,13 @@ struct task_node
 
 } empty_task_list;
 
+struct con_node
+{
+    struct task_struct *con_ts;
+    struct con_node *next;
+
+}
+struct con_node *con_head = NULL;
 // Buffer struct declaration
 struct buff_data
 {
@@ -105,14 +112,30 @@ static int __init helloBBB_init(void)
     }
     if(num_consumers != 0)
     {
-    	consumer = kthread_run(consumer_func, NULL, "consumer");
-    	if (IS_ERR(consumer))
-    	{
-    	    printk(KERN_INFO "ERROR: Cannot create thread consumer\n");
-    	    err = PTR_ERR(consumer);
-    	    consumer = NULL;
-    	    return err;
-	}
+        for (int i  = 0; i < num_consumers; i++)
+        {
+            struct con_node* new_con;
+            new_con = kmalloc(sizeof con_node), GFP_KERNEL);
+            new_con = kthread_run(consumer_func, NULL, "consumer");
+            if (IS_ERR(new_con))
+            {
+                printk(KERN_INFO "ERROR: Cannot create thread consumer\n");
+                err = PTR_ERR(new_con);
+                new_con = NULL;
+                return err;
+            }
+
+            if(con_head == NULL) //if the consumer linked list is empty
+            {
+                new_con->next = NULL;
+                con_head = new_con;
+            }
+            else //insert new consumer to the front of the linked list
+            {
+                new_con->next = con_head;
+                con_head = new_con;
+            }
+        }
     }
 
 
@@ -138,9 +161,6 @@ static int __init helloBBB_init(void)
 	}
     }
 
-
-
-    
     return 0;
 }
  
@@ -248,7 +268,7 @@ static int consumer_func(void *arg)
 
     int counter = 0, index = 1;
     //breaks if kthread_stop() is called
-    while(counter < buff_size)//while(1)
+    while(!kthread_stop())//while(1)
     {
 	/*if(kthread_should_stop())
 	{
@@ -374,7 +394,15 @@ static int consumer_func(void *arg)
  */
 static void __exit helloBBB_exit(void)
 {
-	//kthread_stop(consumer);
+
+    //open the semaphores so it doesn't get stuck
+    up(&empty);
+    up(&full);
+    while(con_head != NULL)//go through the consumer linked list and stop all consumer threads
+    {
+        kthread_stop(con_head);
+        con_head = con_head->next;
+    }
 	u64 base = total_task_time/1000000000;//base total time in secs
 	int hours = base/3600;
 	int minutes = (base - (hours*3600))/60;
