@@ -15,16 +15,16 @@ MODULE_DESCRIPTION("CSE330 Project 2");
 MODULE_VERSION("0.1");              ///< The version of the module
     
 // Initialize params to make it compile    
-static int UID = 0;
+static int uid = 0;
 static int buff_size = 0;
-static int num_producers = 0;
-static int num_consumers = 0;
+static int p = 0;
+static int c = 0;
 
 // TODO: Check param validity
-module_param(UID, int, 0);  // Parameter which stores the the user ID of a given user
+module_param(uid, int, 0);  // Parameter which stores the the user ID of a given user
 module_param(buff_size, int, 0); // Parameter which stores the size of the buffer, must be a positive int
-module_param(num_producers, int, 0); // Parameter which stores the number of producer threads, must be 1 or 0
-module_param(num_consumers, int, 0); // Parameter which stores the number of consumer threads, a non-negative int)
+module_param(p, int, 0); // Parameter which stores the number of producer threads, must be 1 or 0
+module_param(c, int, 0); // Parameter which stores the number of consumer threads, a non-negative int)
 
 // Declare producer and consumer functions
 static int consumer_func(void *arg);
@@ -104,15 +104,15 @@ static int __init helloBBB_init(void)
 
     // Start consumer threads
     //printk(KERN_INFO "Starting consumers\n");
-    if(num_consumers == 0 && num_producers == 0)
+    if(c == 0 && p == 0)
     {
 	    printk(KERN_INFO "No producers or consumers\n");
 	    return 0;
     }
-    if(num_consumers != 0)
+    if(c != 0)
     {
 	int i;
-	for (i = 0; i < num_consumers; i++)
+	for (i = 0; i < c; i++)
 	{
 		
     		consumer = kthread_run(consumer_func, NULL, "consumer");//create new consumer
@@ -138,7 +138,7 @@ static int __init helloBBB_init(void)
 
     // Start the producer thread
     //printk(KERN_INFO "Starting producer. \n");
-    if(num_producers != 0)
+    if(p != 0)
     {
     	producer = kthread_run(producer_func, NULL, "producer");
     	if (IS_ERR(producer))
@@ -391,7 +391,7 @@ static void __exit helloBBB_exit(void)
 	int hours = base/3600;
 	int minutes = (base - (hours*3600))/60;
 	int seconds = base - (hours*3600) - (minutes*60);
-    printk(KERN_INFO "The total elapsed time of all processes for UID %d is %02d:%02d:%02d\n", UID, hours, minutes, seconds);
+    printk(KERN_INFO "The total elapsed time of all processes for UID %d is %02d:%02d:%02d\n", uid, hours, minutes, seconds);
     //printk(KERN_INFO "Closing thread\n");
 }
 
