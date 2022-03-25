@@ -169,7 +169,7 @@ static int producer_func(void *arg)
     int index = 1;
     for_each_process(p)
     {
-        if(p->cred->uid.val == UID && process_counter < buff_size)
+        if(p->cred->uid.val == uid && process_counter < buff_size)
         {
             // Loop until empty nodes exist in the buffer
             if(down_interruptible(&empty)) 
