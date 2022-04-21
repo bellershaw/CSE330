@@ -1,14 +1,10 @@
-#include <linux/init.h>           
-#include <linux/kernel.h>    
-#include <linux/sched/signal.h>
-#include <linux/kthread.h>
-#include <linux/init.h>
-#include <linux/timekeeping.h>
-#include <linux/module.h>       
-#include <linux/ktime.h> 
-#include <linux/slab.h>
-#include <linux/mm_types.h>
+#include <linux/kernel.h>
 #include <linux/hrtimer.h>
+#include <linux/ktime.h>
+#include <linux/mm.h>
+#include <linux/sched/mm.h>
+#include <linux/module.h>
+
 
 MODULE_LICENSE("GPL");              
 MODULE_AUTHOR("Takeshita Ellershaw Payne");      
