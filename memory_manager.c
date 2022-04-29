@@ -25,6 +25,8 @@ static int rss = 0;
 static int wss = 0;
 static int swap = 0;
 
+int counter = 0;
+
 unsigned long timer_interval_ns = 10e9; // 10-second timer
 static struct hrtimer hr_timer;
 
@@ -50,7 +52,21 @@ interval = ktime_set(0,timer_interval_ns);
 hrtimer_forward(timer_for_restart, currtime , interval);
 // Do the measurement, like looking into VMA and walking through memory pages
 // And also do the Kernel log printing aka printk per requirements
+
+if(counter != 0)
+{
 contains_page(processMM);
+printk(KERN_INFO "PID %d: RSS= %d kb SWAP= %d kb WSS= %d kb\n", pid, rss, swap, wss);
+}
+
+
+if(counter > 5)
+{
+return HRTIMER_NORESTART;
+}
+
+counter++;
+
 return HRTIMER_RESTART;
 }
 
@@ -82,8 +98,8 @@ printk("HR Timer module uninstalling\n");
 
 static int __init helloBBB_init(void){
 
-printk(KERN_INFO "Opening thread\n");
-printk(KERN_INFO "Pid: %d\n", pid);
+//printk(KERN_INFO "Opening thread\n");
+//printk(KERN_INFO "Pid: %d\n", pid);
 
 ktime_t ktime ;
 ktime = ktime_set( 0, timer_interval_ns );
@@ -91,37 +107,11 @@ hrtimer_init( &hr_timer, CLOCK_MONOTONIC, HRTIMER_MODE_REL );
 hr_timer.function = &timer_callback;
 hrtimer_start( &hr_timer, ktime, HRTIMER_MODE_REL );
 
-/* 
-Test function that prints out the pid of all processes
-
-struct task_struct* p;
-int index = 1;
-for_each_process(p)
-{
-printk(KERN_INFO "Process pid: %d\n", p->pid);
-} 
-*/
-
-// Get the task struct from a give pid
-// Testing with pid 28991
-
-
-
-int counter = 0;
-while(counter < 6)
-{
+// Start Timer 
 timer_callback(&hr_timer);
-counter++;
-}
 
 
-printk(KERN_INFO "RSS: %d\n", rss);
-printk(KERN_INFO "WSS: %d\n", wss);
-printk(KERN_INFO "SWAP: %d\n", swap);
 
-
-printk(KERN_INFO "Found process for pid %d\n", processTask->pid);
-printk(KERN_INFO "Process Size %d\n", processMM->task_size);
 
  
    return 0;
@@ -148,8 +138,8 @@ pgd_t *pgd;
 p4d_t *p4d;
 pud_t *pud;
     pmd_t *pmd;
-    pte_t *pte;
-struct page *page = NULL;
+    pte_t *ptep;
+
 
     pgd = pgd_offset(mm, address);
     if (!pgd_present(*pgd))
@@ -167,17 +157,16 @@ struct page *page = NULL;
     if (!pmd_present(*pmd))
         goto do_return;
 
-    pte = pte_offset_kernel(pmd, address);
-    if (!pte_present(*pte))
-        goto do_return;
+    ptep = pte_offset_map(pmd, address);
 
-    page = pte_page(*pte);
     
-    if(pte_present(*pte))
+if(pte != NULL)
+{
+if(pte_present(*pte))
     {
     rss++;
     int ret = 0;
-if(pte_young(*pte))
+if(pte_young(*ptep))
 {
 ret = test_and_clear_bit(_PAGE_BIT_ACCESSED, (unsigned long *) &pte->pte);
 }
@@ -191,6 +180,8 @@ ret = test_and_clear_bit(_PAGE_BIT_ACCESSED, (unsigned long *) &pte->pte);
     {
     swap++;
     }
+} 
+    
 do_return:
     return page;
 }
