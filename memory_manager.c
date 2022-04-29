@@ -10,8 +10,8 @@ MODULE_LICENSE("GPL");
 MODULE_AUTHOR("Takeshita Ellershaw Payne");      
 MODULE_DESCRIPTION("CSE330 Project 2");  
 
-int contains_page(const struct mm_struct *const mm);
-struct int page_by_address(const struct mm_struct *const mm, const unsigned long address, struct vm_area_struct *vma);
+void contains_page(const struct mm_struct *const mm);
+struct page_by_address(const struct mm_struct *const mm, const unsigned long address, struct vm_area_struct *vma);
 
 //enum hrtimer_restart timer_callback( struct hrtimer *timer_for_restart );
 //static int __init timer_init(void);
@@ -131,7 +131,7 @@ return ret;
 }
 */
 
-struct int page_by_address(const struct mm_struct *const mm,
+struct page_by_address(const struct mm_struct *const mm,
                              const unsigned long address, struct vm_area_struct *vma )
 {
 pgd_t *pgd;
@@ -142,7 +142,7 @@ pte_t *ptep, pte;
 	
 pgd = pgd_offset(mm, address);                    // get pgd from mm and the page address
 if (pgd_none(*pgd) || pgd_bad(*pgd)){           // check if pgd is bad or does not exist
-		return 0;}
+		return;}
 
 p4d = p4d_offset(pgd, address);                   // get p4d from from pgd and the page address
 if (p4d_none(*p4d) || p4d_bad(*p4d)){          // check if p4d is bad or does not exist
@@ -150,14 +150,14 @@ if (p4d_none(*p4d) || p4d_bad(*p4d)){          // check if p4d is bad or does no
 
 pud = pud_offset(p4d, address);                   // get pud from from p4d and the page address
 if (pud_none(*pud) || pud_bad(*pud)){          // check if pud is bad or does not exist
-		return 0;}
+		return;}
 
 pmd = pmd_offset(pud, address);               // get pmd from from pud and the page address
 if (pmd_none(*pmd) || pmd_bad(*pmd)){	   // check if pmd is bad or does not exist
-		return 0;} 
+		return;} 
 
 ptep = pte_offset_map(pmd, address);      // get pte from pmd and the page address
-if (!ptep){return 0;}                                         // check if pte does not exist
+if (!ptep){return;}                                         // check if pte does not exist
 pte = *ptep;
 
 if(pte != NULL)
@@ -177,12 +177,11 @@ if(pte != NULL)
     }
 } 
 
-return 0;
+return;
 }
 
-int contains_page(const struct mm_struct *const mm)
+void contains_page(const struct mm_struct *const mm)
 {
-    int contains = 0;
 
     if (mm != NULL) {
         const struct vm_area_struct *vma = mm->mmap;
@@ -197,7 +196,7 @@ int contains_page(const struct mm_struct *const mm)
         }
     }
 
-    return contains;
+    return;
 }
 
 
