@@ -11,7 +11,7 @@ MODULE_AUTHOR("Takeshita Ellershaw Payne");
 MODULE_DESCRIPTION("CSE330 Project 2");  
 
 int contains_page(const struct mm_struct *const mm);
-struct page *page_by_address(const struct mm_struct *const mm, const unsigned long address, struct vm_area_struct *vma);
+struct int page_by_address(const struct mm_struct *const mm, const unsigned long address, struct vm_area_struct *vma);
 
 //enum hrtimer_restart timer_callback( struct hrtimer *timer_for_restart );
 //static int __init timer_init(void);
@@ -131,72 +131,65 @@ return ret;
 }
 */
 
-struct page *page_by_address(const struct mm_struct *const mm,
+struct int page_by_address(const struct mm_struct *const mm,
                              const unsigned long address, struct vm_area_struct *vma )
 {
 pgd_t *pgd;
-p4d_t *p4d;
+p4d_t *p4d; 
+pmd_t *pmd;
 pud_t *pud;
-    pmd_t *pmd;
-    pte_t *ptep;
+pte_t *ptep, pte;
+	
+pgd = pgd_offset(mm, address);                    // get pgd from mm and the page address
+if (pgd_none(*pgd) || pgd_bad(*pgd)){           // check if pgd is bad or does not exist
+		return 0;}
 
+p4d = p4d_offset(pgd, address);                   // get p4d from from pgd and the page address
+if (p4d_none(*p4d) || p4d_bad(*p4d)){          // check if p4d is bad or does not exist
+		return;}
 
-    pgd = pgd_offset(mm, address);
-    if (!pgd_present(*pgd))
-        goto do_return;
-        
-       p4d = p4d_offset(pgd, address);
-    if (!pgd_present(*pgd))
-        goto do_return;
+pud = pud_offset(p4d, address);                   // get pud from from p4d and the page address
+if (pud_none(*pud) || pud_bad(*pud)){          // check if pud is bad or does not exist
+		return 0;}
 
-    pud = pud_offset(p4d, address);
-    if (!pud_present(*pud))
-        goto do_return;
+pmd = pmd_offset(pud, address);               // get pmd from from pud and the page address
+if (pmd_none(*pmd) || pmd_bad(*pmd)){	   // check if pmd is bad or does not exist
+		return 0;} 
 
-    pmd = pmd_offset(pud, address);
-    if (!pmd_present(*pmd))
-        goto do_return;
+ptep = pte_offset_map(pmd, address);      // get pte from pmd and the page address
+if (!ptep){return 0;}                                         // check if pte does not exist
+pte = *ptep;
 
-    ptep = pte_offset_map(pmd, address);
-
-    
 if(pte != NULL)
 {
-if(pte_present(*pte))
+    if(pte_present(pte))
     {
-    rss++;
-    int ret = 0;
-if(pte_young(*ptep))
-{
-ret = test_and_clear_bit(_PAGE_BIT_ACCESSED, (unsigned long *) &pte->pte);
-}
-    if(ret == 1)
-    {
-    wss++;
-    }
-    
+        rss++;
+        if(pte_young(pte))
+        {
+            wss++;
+            test_and_clear_bit(_PAGE_BIT_ACCESSED,(unsigned long *)ppte);
+        } 
     }
     else
     {
     swap++;
     }
 } 
-    
-do_return:
-    return page;
+
+return 0;
 }
 
 int contains_page(const struct mm_struct *const mm)
 {
     int contains = 0;
-    struct page *myPage;
 
     if (mm != NULL) {
         const struct vm_area_struct *vma = mm->mmap;
         while (vma != NULL) {
             unsigned long address;
             for (address = vma->vm_start; address < vma->vm_end; address += PAGE_SIZE) {
-                myPage = page_by_address(mm, address, vma);
+                page_by_address(mm, address, vma);
                 //printk(KERN_INFO "Found page at address %d\n", address);
             }
 
